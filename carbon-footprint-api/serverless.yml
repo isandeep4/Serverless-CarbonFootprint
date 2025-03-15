@@ -1,0 +1,94 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: serverlesssandeep
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: web-visualization-app
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: carbon-footprint-api
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  environment:
+    DYNAMODB_TABLE: CarbonFootprintData
+    INSIGHTS_TABLE: CarbonFpInsightsData
+  iam:
+    role:
+      statements: # permissions for all of your functions can be set here
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+        - Effect: Allow
+          Action: # Gives permission to DynamoDB tables in a specific region
+            - dynamodb:DescribeTable
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/CarbonFootprintData"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/CarbonFpInsightsData"
+        - Effect: Allow
+          Action:
+            - dynamodb:DescribeStream
+            - dynamodb:GetRecords
+            - dynamodb:GetShardIterator
+            - dynamodb:ListStreams
+          Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/CarbonFootprintData"
+
+functions:
+  saveCarbonFootprint:
+    handler: functions/save-carbon-footprint.lambda_handler
+    events:
+      - httpApi:
+          path: /save-carbon-footprint
+          method: post
+  getCarbonFootprintInsights:
+    handler: functions/get-carbon-footprint-insights.lambda_handler
+    events:
+      - httpApi:
+          path: /carbon-footprint-insights
+          method: get
+  ProcessInsightsLambda:
+    handler: functions/process-carbon-footprint.lambda_handler
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt:
+              - CarbonFootprintTable
+              - StreamArn
+          batchSize: 5
+          startingPosition: LATEST
+
+resources: # CloudFormation template syntax
+  Resources:
+    CarbonFootprintTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: CarbonFootprintData
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+    CarbonFPAggregateTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: CarbonFpInsightsData
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
