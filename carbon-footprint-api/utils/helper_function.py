@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+
 conversion_factor = {
     "transport": {
         "q1": {
@@ -39,16 +42,45 @@ conversion_factor = {
              "75%": 0.75,
              "all": 1
         }
+    },
+    "food": {
+        "q1": {
+            "beef": 40, # $ spent week
+            "meat": 25,
+            "pork": 15,
+            "chicken": 20,
+            "seafood": 20,
+            "diary": 15,
+            "vegan": 15,
+        },
+        "q2": {
+            "0$": 0,
+            "1$><20$": 10,
+            "20$><50$": 30,
+            ">50$": 60
+        },
+        "q3": {
+            "0%": 0,
+            "0%><10%": 0.05,
+            "10%><20%": 0.15,
+            "20%><30%": 0.25,
+            ">30%": 0.40
+        },
+        "q4": {
+            "local": 0.85,
+            "mall": 1,
+            "Both": 1.15
+        }
     }
 }
-carbonIntensity = {
-  "beef": 60,
-  "meat": 20,
-  "pork": 12,
-  "chicken": 6,
-  "seafood": 10,
-  "diary": 15,
-  "vegan": 1,
+co2_per_dollar_spent_food = {
+    "beef": 1.5,      # kg CO₂ per $
+    "meat": 1.2,
+    "pork": 0.8,
+    "chicken": 0.6,
+    "seafood": 0.9,
+    "diary": 1.0,
+    "vegan": 0.3
 }
 
 
@@ -90,3 +122,32 @@ def calculate_transport_emissions(transport_data):
             q6_emission = conversion_factor["transport"]["q6"].get(q6_answer, 0) 
             transport_emission = transport_emission - q6_emission * transport_emission
     return transport_emission
+
+
+def calculate_food_emission(food_data):
+    print("food_data", food_data)
+    food_lookup = { item["qId"]: item["answer"] for item in food_data}
+    q1_answer = food_lookup.get("q1")
+    if isinstance(q1_answer, list):
+        avg_money_spent_diet = sum(Decimal(conversion_factor["food"]["q1"].get(answer, 0)) for answer in q1_answer)
+    else:
+        avg_money_spent_diet = Decimal(conversion_factor["food"]["q1"].get(q1_answer, 0))
+    q2_answer = food_lookup.get("q2")
+    money_spent_restaurant = conversion_factor["food"]["q2"].get(q2_answer, 0)
+    total_money_spent = avg_money_spent_diet + money_spent_restaurant
+    base_emission = total_money_spent * co2_per_dollar_spent_food[q1_answer]
+    q3_answer = food_lookup.get("q3")
+    wastage_emission = base_emission * Decimal(conversion_factor["food"]["q3"].get(q3_answer, 0))
+    q4_answer = food_lookup.get("q4")
+    import_multiplier =  conversion_factor["food"]["q4"].get(q4_answer, 1)
+    food_emission = (base_emission + wastage_emission) * import_multiplier
+    return food_emission
+
+
+
+
+
+
+
+            
+
