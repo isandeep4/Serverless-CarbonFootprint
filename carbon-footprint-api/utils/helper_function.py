@@ -71,7 +71,44 @@ conversion_factor = {
             "mall": 1,
             "Both": 1.15
         }
-    }
+    },
+    "home": {
+      "q1": {
+        "detached": 1.2,
+        "semiDetached": 1.0,
+        "terrace": 0.9,
+        "flat": 0.7
+      },
+      "q2": {
+          "1": 1,
+          "2": 2,
+          "3": 3,
+          ">=4": 4
+      },
+      "q3": {
+          "1": 1,
+          "2": 2,
+          "3": 3,
+          ">=4": 4
+      },
+      "q4": {
+          "gas":  0.184, # co2kg / kwh
+          "oil": 0.249,
+          "electricity": 0.233,
+          "wood": 0.015,
+      },
+      "q5": {
+          "yes": 0.9,
+          "no": 1
+      },
+      "q6": {
+        "<14": 0.8,
+        "14-17": 0.9,
+        "18-21": 1.0,
+        ">21": 1.1, 
+      }
+    },
+
 }
 co2_per_dollar_spent_food = {
     "beef": 1.5,      # kg CO₂ per $
@@ -142,6 +179,31 @@ def calculate_food_emission(food_data):
     import_multiplier =  conversion_factor["food"]["q4"].get(q4_answer, 1)
     food_emission = (base_emission + wastage_emission) * import_multiplier
     return food_emission
+
+def calculate_home_emission(home_data):
+    print("home_data", home_data)
+    home_lookup = { item["qId"]: item["answer"] for item in home_data}
+    q1_answer = home_lookup.get("q1")
+    house_type_factor = conversion_factor["home"]["q1"].get(q1_answer)
+    bedrooms =  Decimal(home_lookup.get("q2", 3))
+    people = Decimal(home_lookup.get("q3", 2)) 
+    q4_answer = home_lookup.get("q4")
+    heating_factor = conversion_factor["home"]["q4"].get(q4_answer)
+    q5_answer = home_lookup.get("q5")
+    LightsOnOff = conversion_factor["home"]["q5"].get(q5_answer)
+    q6_answer = home_lookup.get("q6")
+    room_temperature_factor = conversion_factor["home"]["q6"].get(q6_answer)
+    base_kwh_per_week = Decimal(230)  # average home
+    avg_bedrooms = Decimal(3)
+    home_emission = (heating_factor * base_kwh_per_week *
+                     (bedrooms / avg_bedrooms) *
+                     house_type_factor *
+                     LightsOnOff *
+                     room_temperature_factor) / people
+    return home_emission
+    
+
+
 
 
 
