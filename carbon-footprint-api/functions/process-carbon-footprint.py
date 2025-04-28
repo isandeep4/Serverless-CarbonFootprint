@@ -3,7 +3,7 @@ import os
 import json
 from datetime import datetime, UTC
 from decimal import Decimal 
-from helper_function import conversion_factor, carbonIntensity
+from utils.helper_function import calculate_food_emission, calculate_home_emission, calculate_shopping_emission, calculate_transport_emissions
 
 dynamodb = boto3.resource('dynamodb')
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
@@ -21,7 +21,7 @@ def unwrap_dynamodb_value(value):
     else:
         return value
 
-def lambda_handler(event):
+def lambda_handler(event, context):
     print("stream data", event)
     for record in event["Records"]:
         if record["eventName"] == "INSERT":
@@ -52,21 +52,27 @@ def lambda_handler(event):
                             'answer': processed_answer
                         })
             print("formatted_data:", formatted_data)
-            result = calculate_emissions(formatted_data)
+            transport_emission = calculate_transport_emissions(formatted_data["transport"])
+            food_emission = calculate_food_emission(formatted_data["food"])
+            home_emission = calculate_home_emission(formatted_data["home"])
+            shopping_emission =  calculate_shopping_emission(formatted_data["shopping"]) 
+            result = transport_emission + food_emission + home_emission + shopping_emission
+            print("result:", result)
 
-            # insight_table = dynamodb.Table(INSIGHTS_TABLE)
+            insight_table = dynamodb.Table(INSIGHTS_TABLE)
             
-            # insight_table_item = {
-            #     'user_id': user_id,
-            #     'transport': category_emissions.get("transport", Decimal(0)),
-            #     'food': category_emissions.get("food", Decimal(0)),
-            #     'energy': category_emissions.get("energy", Decimal(0)),
-            #     'total_emissions': total_emissions,
-            #     'created_at': created_at
-            # }
-            # insight_table.put_item(Item=insight_table_item)
+            insight_table_item = {
+                'user_id': formatted_data["user_id"],
+                'transport': transport_emission,
+                'food': food_emission,
+                'home': home_emission,
+                'shopping': shopping_emission,
+                'total_emissions': result,
+                'created_at': formatted_data["created_at"]
+            }
+            insight_table.put_item(Item=insight_table_item)
 
-            # return {"statusCode": 200, "body": json.dumps({"message": "Insights saved"})}
+            return {"statusCode": 200, "body": json.dumps({"message": "Insights saved"})}
 
 
 
