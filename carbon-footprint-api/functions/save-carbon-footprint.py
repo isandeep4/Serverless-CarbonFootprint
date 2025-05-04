@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     data = json.loads(event.get("body", "{}"))
     table = dynamodb.Table(TABLE_NAME)
     item = {
-        'user_id': str(uuid.uuid4()),
+        'user_id': data["id"],
         'transport': data["travelQuestionnaire"],
         'food': data["foodQuestionnaire"],
         'home': data["homeQuestionnaire"],

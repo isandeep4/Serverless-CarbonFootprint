@@ -262,7 +262,7 @@ def calculate_shopping_emission(shopping_data):
     entertainment_emission = entertainment_emission_per_dollar * dollar_spent_entertainment
     q5_answer = shopping_lookup.get("q5")
     if isinstance(q5_answer, list):
-        avg_recycle_value = sum(Decimal(conversion_factor["shopping"]["q5"].get(answer)) for answer in q5_answer)
+        avg_recycle_value = sum(Decimal(conversion_factor["shopping"]["q5"].get(answer)) for answer in q5_answer if answer is not None)
     else:
          avg_recycle_value = Decimal(conversion_factor["shopping"]["q5"].get(q5_answer))   
     shopping_emission = clothing_emission + stationary_emission + digital_emission + entertainment_emission + avg_recycle_value

@@ -56,8 +56,12 @@ def lambda_handler(event, context):
             food_emission = calculate_food_emission(formatted_data["food"])
             home_emission = calculate_home_emission(formatted_data["home"])
             shopping_emission =  calculate_shopping_emission(formatted_data["shopping"]) 
-            result = transport_emission + food_emission + home_emission + shopping_emission
-            print("result:", result)
+            total_emission = transport_emission + food_emission + home_emission + shopping_emission
+            print("result:", total_emission) 
+
+            regional_emission = 40 #weekly
+            global_emission = 100 #weekly
+            percentage_difference = ((regional_emission - total_emission) / regional_emission) * 100
 
             insight_table = dynamodb.Table(INSIGHTS_TABLE)
             
@@ -67,8 +71,11 @@ def lambda_handler(event, context):
                 'food': food_emission,
                 'home': home_emission,
                 'shopping': shopping_emission,
-                'total_emissions': result,
-                'created_at': formatted_data["created_at"]
+                'total_emissions': total_emission,
+                'created_at': formatted_data["created_at"],
+                "regional_emission": regional_emission,
+                "difference_percentage": percentage_difference,
+                "global_emission": global_emission
             }
             insight_table.put_item(Item=insight_table_item)
 
